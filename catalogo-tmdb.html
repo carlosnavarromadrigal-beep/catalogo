@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi catálogo</title>
+<style>
+:root{--bg:#eef0f3;--card:#fff;--ink:#14181f;--mute:#6b7280;--line:#d9dde3;--n:#e50914;--p:#0aa5de;--a:#6b7280;--acc:#14181f;--accfg:#fff;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#101319;--card:#191d25;--ink:#eef0f3;--mute:#9aa3b2;--line:#2a303b;--a:#c9ced8;--acc:#eef0f3;--accfg:#101319}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 "Inter","Helvetica Neue",Arial,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:28px;letter-spacing:-.02em;margin:8px 0 14px}
+input,select,button{font:inherit;color:inherit}
+input,select{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+.bar{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.sel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+#grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:16px}
+@media (min-width:640px){#grid{grid-template-columns:repeat(4,1fr)}.sel{grid-template-columns:repeat(3,1fr)}}
+.c{background:none;border:0;padding:0;text-align:left;cursor:pointer}
+.c img,.ph{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:10px;background:var(--line);display:block}
+.c b{display:block;font-weight:600;font-size:15px;margin-top:6px;overflow-wrap:anywhere}
+.w{position:relative}
+.rt{position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);color:#fff;font-weight:700;font-size:14px;padding:4px 9px;border-radius:999px}
+.rt i{width:9px;height:9px;border-radius:50%}
+.g{background:#22c55e}.y{background:#f59e0b}.r{background:#ef4444}
+.c span{color:var(--mute);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px}
+.n{background:var(--n)}.p{background:var(--p)}.a{background:var(--a)}
+.more{display:block;margin:22px auto 0;padding:12px 22px;border:1px solid var(--line);background:var(--card);border-radius:10px;cursor:pointer}
+.msg{color:var(--mute);padding:24px 0}
+dialog{width:min(560px,94vw);max-height:90vh;border:0;border-radius:16px;background:var(--card);color:var(--ink);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.dh{display:flex;gap:14px}.dh img,.dh .ph{width:110px;flex:none}
+.dh h2{margin:0 0 4px;font-size:21px}.dh p{margin:0;color:var(--mute);font-size:14px}
+.ov{margin:14px 0;font-size:15px}
+.go{display:flex;gap:8px;flex-wrap:wrap}
+.go a,.go button{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:9px 14px;font-size:14px;cursor:pointer}
+.x{float:right;border:0;background:none;font-size:24px;cursor:pointer;color:var(--mute)}
+details{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px}
+summary{cursor:pointer;font-weight:600}
+details p{margin:10px 0 0;color:var(--mute)}
+.btn{border:0;background:var(--acc);color:var(--accfg);border-radius:10px;padding:12px 16px;font-weight:600;cursor:pointer;margin-top:10px}
+footer{margin-top:30px;color:var(--mute);font-size:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>Mi catálogo</h1>
+<section id="gate" hidden>
+<p>Para cargar el catálogo hace falta una clave gratuita de TMDB: crea una cuenta en themoviedb.org, entra en Ajustes › API y copia la "Clave de API" (la corta, v3).</p>
+<input id="key" type="text" placeholder="Pega aquí tu clave de API" autocomplete="off">
+<button class="btn" id="ksave">Guardar clave</button>
+</section>
+<section id="app" hidden>
+<input id="q" type="search" placeholder="Buscar película o serie" aria-label="Buscar">
+<div class="bar" id="tipo"></div>
+<div class="bar" id="plat"></div>
+<div class="sel">
+<select id="genre" aria-label="Género"></select>
+<select id="sort" aria-label="Ordenar"><option value="popularity.desc">Más populares</option><option value="vote_average.desc">Mejor valoradas</option><option value="date">Más recientes</option></select>
+</div>
+<div id="grid"></div>
+<div id="msg" class="msg"></div>
+<button class="more" id="more" hidden>Cargar más</button>
+<details>
+<summary>Audio en castellano y sin subtítulos</summary>
+<p>Cada plataforma controla el audio y los subtítulos dentro de su propio reproductor, y ninguna permite fijarlos desde un enlace externo. Para que casi siempre salga como quieres: elige en los ajustes de cada app el idioma de audio Español (España) y desactiva los subtítulos. Netflix y Apple TV recuerdan la elección que haces al reproducir. TMDB no indica si un título trae doblaje en castellano, así que en algún caso habrá que cambiar la pista a mano.</p>
+</details>
+<footer>Datos de TMDB. Disponibilidad en España cortesía de JustWatch. Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.</footer>
+</section>
+</main>
+<dialog id="dlg"></dialog>
+<script>
+var API="https://api.themoviedb.org/3",IMG="https://image.tmdb.org/t/p/";
+var PID={n:8,p:119,a:350},PN={n:"Netflix",p:"Prime Video",a:"Apple TV"};
+var PU={n:"https://www.netflix.com/search?q=",p:"https://www.primevideo.com/search/?phrase=",a:"https://tv.apple.com/es/search?term="};
+var $=function(s){return document.querySelector(s)};
+var K="",S={type:"movie",plat:"all",genre:"",sort:"popularity.desc",q:"",page:1,total:1,mine:false},PC={},LST=[];
+try{K=localStorage.getItem("tk")||"";LST=JSON.parse(localStorage.getItem("lst")||"[]")}catch(e){}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function api(path,p){var u=new URL(API+path);u.searchParams.set("api_key",K);u.searchParams.set("language","es-ES");
+for(var k in p||{})if(p[k]!==""&&p[k]!=null)u.searchParams.set(k,p[k]);
+return fetch(u).then(function(r){if(r.status===401){try{localStorage.removeItem("tk")}catch(e){}K="";gate();throw new Error("clave")}if(!r.ok)throw new Error(r.status);return r.json()})}
+function provs(type,id){var k=type+id;if(PC[k])return Promise.resolve(PC[k]);
+return api("/"+type+"/"+id+"/watch/providers").then(function(d){var fl=((d.results||{}).ES||{}).flatrate||[];var ids=fl.map(function(x){return x.provider_id});
+PC[k]=["n","p","a"].filter(function(c){return ids.indexOf(PID[c])>-1});return PC[k]}).catch(function(){return[]})}
+function gate(){$("#gate").hidden=!!K;$("#app").hidden=!K}
+$("#ksave").onclick=function(){var v=$("#key").value.trim();if(!v)return;K=v;try{localStorage.setItem("tk",v)}catch(e){}gate();start()};
+function pills(el,opts,key){el.innerHTML=opts.map(function(o){return'<button class="chip" data-k="'+key+'" data-v="'+o[0]+'" aria-pressed="'+(S[key]===o[0])+'">'+o[1]+'</button>'}).join("")}
+function bars(){pills($("#tipo"),[["movie","Películas"],["tv","Series"]],"type");
+pills($("#plat"),[["all","Todas"],["n","Netflix"],["p","Prime Video"],["a","Apple TV"]],"plat");
+var b=document.createElement("button");b.className="chip";b.dataset.k="mine";b.setAttribute("aria-pressed",S.mine);b.textContent="Mi lista";$("#plat").appendChild(b)}
+function genres(){api("/genre/"+S.type+"/list").then(function(d){$("#genre").innerHTML='<option value="">Todos los géneros</option>'+d.genres.map(function(g){return'<option value="'+g.id+'">'+esc(g.name)+'</option>'}).join("")}).catch(function(){})}
+function dots(pl){return pl.map(function(c){return'<i class="dot '+c+'"></i>'}).join("")+pl.map(function(c){return PN[c]}).join(", ")}
+function rate(r){var v=r.vote_average,c=r.vote_count;if(!(v>0)||(c!=null&&c<10))return"";return'<div class="rt"><i class="'+(v>=7?"g":v>=5.5?"y":"r")+'"></i>'+v.toFixed(1)+'</div>'}
+function card(r,pl,type){var t=r.title||r.name||"",d=(r.release_date||r.first_air_date||"").slice(0,4);
+return'<button class="c" data-id="'+r.id+'" data-t="'+type+'">'+'<div class="w">'+(r.poster_path?'<img loading="lazy" alt="" src="'+IMG+'w342'+r.poster_path+'">':'<div class="ph"></div>')+rate(r)+'</div><b>'+esc(t)+'</b><span>'+d+(pl.length?" · "+dots(pl):"")+'</span></button>'}
+function load(reset){
+if(reset){S.page=1;$("#grid").innerHTML=""}
+$("#msg").textContent="Cargando…";$("#more").hidden=true;
+if(S.mine){var h=LST.map(function(i){return card({id:i.id,title:i.t,poster_path:i.p,release_date:i.d,vote_average:i.v,vote_count:i.vc},PC[i.type+i.id]||[],i.type)}).join("");
+$("#grid").innerHTML=h;$("#msg").textContent=LST.length?"":"Tu lista está vacía. Abre un título y pulsa Guardar.";return}
+var req;
+if(S.q){req=api("/search/"+S.type,{query:S.q,page:S.page})}
+else{var ids=S.plat==="all"?[8,119,350].join("|"):PID[S.plat];
+var dk=S.type==="movie"?"primary_release_date.desc":"first_air_date.desc";
+var so=S.sort==="date"?dk:S.sort;
+req=api("/discover/"+S.type,{watch_region:"ES",with_watch_providers:ids,with_watch_monetization_types:"flatrate",sort_by:so,"vote_count.gte":S.sort==="popularity.desc"?"":200,with_genres:S.genre,"primary_release_date.lte":"","page":S.page})}
+req.then(function(d){S.total=d.total_pages||1;
+return Promise.all(d.results.map(function(r){return provs(S.type,r.id).then(function(pl){return{r:r,pl:pl}})}))}).then(function(L){
+L=L.filter(function(x){return x.pl.length&&(S.plat==="all"||x.pl.indexOf(S.plat)>-1)});
+$("#grid").insertAdjacentHTML("beforeend",L.map(function(x){return card(x.r,x.pl,S.type)}).join(""));
+$("#msg").textContent=$("#grid").children.length?"":"No hay resultados en Netflix, Prime Video ni Apple TV. Prueba otra búsqueda.";
+$("#more").hidden=S.page>=S.total}).catch(function(e){if(e.message!=="clave")$("#msg").textContent="No se pudo cargar el catálogo. Comprueba la conexión e inténtalo de nuevo."})}
+document.addEventListener("click",function(e){var t=e.target.closest("button");if(!t)return;
+if(t.dataset.k){var k=t.dataset.k;if(k==="mine"){S.mine=!S.mine}else{S.mine=false;S[k]=t.dataset.v;if(k==="type"){S.genre="";genres()}}bars();load(true)}
+else if(t.classList.contains("c"))openD(t.dataset.t,t.dataset.id)
+else if(t.id==="more"){S.page++;load(false)}
+else if(t.classList.contains("x"))$("#dlg").close()});
+$("#genre").onchange=function(e){S.genre=e.target.value;load(true)};
+$("#sort").onchange=function(e){S.sort=e.target.value;load(true)};
+var tm;$("#q").oninput=function(e){clearTimeout(tm);tm=setTimeout(function(){S.q=e.target.value.trim();S.mine=false;bars();load(true)},350)};
+function openD(type,id){var dl=$("#dlg");dl.innerHTML='<p class="msg">Cargando…</p>';dl.showModal();
+Promise.all([api("/"+type+"/"+id),provs(type,id)]).then(function(a){var d=a[0],pl=a[1],t=d.title||d.name,dt=(d.release_date||d.first_air_date||"").slice(0,4);
+var rt=d.runtime?d.runtime+" min":(d.number_of_seasons?d.number_of_seasons+(d.number_of_seasons>1?" temporadas":" temporada"):"");
+var ol="";try{ol=new Intl.DisplayNames(["es"],{type:"language"}).of(d.original_language)}catch(e){}
+var meta=[dt,rt,d.vote_average?"★ "+d.vote_average.toFixed(1):"",ol?"Original: "+ol:""].filter(Boolean).join(" · ");
+var saved=LST.some(function(i){return i.id==id&&i.type==type});
+dl.innerHTML='<button class="x" aria-label="Cerrar">×</button><div class="dh">'+(d.poster_path?'<img alt="" src="'+IMG+'w185'+d.poster_path+'">':'<div class="ph"></div>')+'<div><h2>'+esc(t)+'</h2><p>'+esc(meta)+'</p><p>'+esc((d.genres||[]).map(function(g){return g.name}).join(", "))+'</p></div></div><p class="ov">'+esc(d.overview||"Sin sinopsis en castellano.")+'</p><div class="go">'+
+pl.map(function(c){return'<a href="'+PU[c]+encodeURIComponent(t)+'" target="_blank" rel="noopener"><i class="dot '+c+'"></i>Ver en '+PN[c]+'</a>'}).join("")+
+'<button id="sv">'+(saved?"Quitar de mi lista":"Guardar en mi lista")+'</button></div>';
+$("#sv").onclick=function(){if(saved){LST=LST.filter(function(i){return!(i.id==id&&i.type==type)})}else{LST.push({id:d.id,type:type,t:t,p:d.poster_path,d:d.release_date||d.first_air_date,v:d.vote_average,vc:d.vote_count})}
+try{localStorage.setItem("lst",JSON.stringify(LST))}catch(e){}openD(type,id);if(S.mine)load(true)}}).catch(function(){dl.innerHTML='<button class="x">×</button><p class="msg">No se pudo cargar este título.</p>'})}
+function start(){bars();genres();load(true)}
+gate();if(K)start();
+</script>
+</body>
+</html>
