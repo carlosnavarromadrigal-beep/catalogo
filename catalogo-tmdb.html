@@ -50,12 +50,30 @@ summary{cursor:pointer;font-weight:600}
 details p{margin:10px 0 0;color:var(--mute)}
 .btn{border:0;background:var(--acc);color:var(--accfg);border-radius:10px;padding:12px 16px;font-weight:600;cursor:pointer;margin-top:10px}
 footer{margin-top:30px;color:var(--mute);font-size:12px}
+.tvb{margin-left:auto;background:#1c1c22;color:#fff;border:1px solid #3a3a44;border-radius:999px;padding:9px 16px;font-size:14px;cursor:pointer}
+:root.tv{--bg:#101319;--card:#191d25;--ink:#eef0f3;--mute:#9aa3b2;--line:#2a303b;--a:#c9ced8}
+.tv main{max-width:1800px}
+.tv .tvb{font-size:18px;padding:12px 22px}
+.tv .chip{font-size:20px;padding:12px 24px}
+.tv input,.tv select{font-size:20px;padding:14px 16px}
+.tv #grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:24px}
+.tv .c{border-radius:14px;transition:transform .12s}
+.tv .c b{font-size:20px}.tv .c span{font-size:16px}
+.tv .rt{font-size:18px;padding:5px 12px}
+.tv .c:hover,.tv .c:focus{transform:scale(1.07);outline:4px solid #fff;outline-offset:3px}
+.tv button:focus,.tv a:focus,.tv select:focus,.tv input:focus{outline:4px solid #fff;outline-offset:3px}
+.tv .more{font-size:22px;padding:16px 30px}
+.tv dialog{width:min(900px,92vw)}
+.tv .dh h2{font-size:30px}.tv .dh p{font-size:18px}.tv .dh img{width:180px}
+.tv .ov{font-size:20px}
+.tv .go a,.tv .go button{font-size:20px;padding:14px 22px}
 </style>
 </head>
 <body>
 <header class="top"><div class="brand">
 <svg viewBox="0 0 40 40" role="img" aria-label="Logo de Arista Informática"><path fill="#d62f2c" d="M20 2 38 38H28L20 20 12 38H2Z"/><path fill="#d62f2c" d="M16 38 20 29 24 38Z"/></svg>
 <div><div class="bn">ARISTA</div><div class="bs">INFORMÁTICA</div></div>
+<button class="tvb" id="tvb">Modo TV</button>
 </div></header>
 <main>
 <h1>Mi catálogo</h1>
@@ -144,6 +162,9 @@ pl.map(function(c){return'<a href="'+PU[c]+encodeURIComponent(t)+'" target="_bla
 '<button id="sv">'+(saved?"Quitar de mi lista":"Guardar en mi lista")+'</button></div>';
 $("#sv").onclick=function(){if(saved){LST=LST.filter(function(i){return!(i.id==id&&i.type==type)})}else{LST.push({id:d.id,type:type,t:t,p:d.poster_path,d:d.release_date||d.first_air_date,v:d.vote_average,vc:d.vote_count})}
 try{localStorage.setItem("lst",JSON.stringify(LST))}catch(e){}openD(type,id);if(S.mine)load(true)}}).catch(function(){dl.innerHTML='<button class="x">×</button><p class="msg">No se pudo cargar este título.</p>'})}
+function setTV(on){document.documentElement.classList.toggle("tv",on);$("#tvb").textContent=on?"Salir de modo TV":"Modo TV";try{localStorage.setItem("tv",on?"1":"0")}catch(e){}}
+$("#tvb").onclick=function(){setTV(!document.documentElement.classList.contains("tv"))};
+(function(){var s=null;try{s=localStorage.getItem("tv")}catch(e){}setTV(s===null?/\bAFT/.test(navigator.userAgent):s==="1")})();
 function start(){bars();genres();load(true)}
 gate();if(K)start();
 </script>
