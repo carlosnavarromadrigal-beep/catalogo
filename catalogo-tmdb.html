@@ -180,7 +180,7 @@ if(r.authToken){try{localStorage.setItem("ptk",r.authToken)}catch(e){}plexConnec
 }).catch(function(){$("#msg").textContent="No se pudo iniciar el acceso a Plex."})}
 function tryConn(cs,i,d){if(i>=cs.length)return Promise.reject(new Error("conn"));var c=new AbortController(),tm=setTimeout(function(){c.abort()},7000);
 return fetch(cs[i].uri+"/identity?X-Plex-Token="+d.accessToken,{headers:{Accept:"application/json"},signal:c.signal}).then(function(r){clearTimeout(tm);if(!r.ok)throw new Error(r.status);return{uri:cs[i].uri,at:d.accessToken,id:d.clientIdentifier}}).catch(function(){clearTimeout(tm);return tryConn(cs,i+1,d)})}
-function plexConnect(){var t="";try{t=localStorage.getItem("ptk")||""}catch(e){}
+function plexConnect(){$("#grid").innerHTML="";$("#more").hidden=true;var t="";try{t=localStorage.getItem("ptk")||""}catch(e){}
 if(!t){plexLogin();return}
 $("#msg").textContent="Conectando con tu servidor Plex…";
 pj("https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&"+pq(t)).then(function(R){
