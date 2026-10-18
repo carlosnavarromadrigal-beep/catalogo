@@ -171,10 +171,10 @@ var JH={headers:{Accept:"application/json"}};
 function pq(t){return"X-Plex-Client-Identifier="+encodeURIComponent(CID)+"&X-Plex-Product=Mi%20catalogo"+(t?"&X-Plex-Token="+encodeURIComponent(t):"")}
 function pj(u,o){return fetch(u,o||JH).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
 function plexUrl(i){return"https://app.plex.tv/desktop/#!/server/"+PX.srv.id+"/details?key="+encodeURIComponent("/library/metadata/"+i.ratingKey)}
-function plexLogin(){var w=window.open("","_blank");$("#msg").textContent="Inicia sesión en Plex en la pestaña que se abre y vuelve aquí.";
+function plexLogin(){$("#msg").textContent="Preparando el acceso a Plex…";
 pj("https://plex.tv/api/v2/pins?strong=true&"+pq(),{method:"POST",headers:{Accept:"application/json"}}).then(function(p){
 var u="https://app.plex.tv/auth#?clientID="+encodeURIComponent(CID)+"&code="+p.code+"&context%5Bdevice%5D%5Bproduct%5D=Mi%20catalogo";
-if(w)w.location.href=u;else $("#msg").innerHTML='<a href="'+u+'" target="_blank" rel="noopener">Toca aquí para iniciar sesión en Plex</a>';
+$("#msg").innerHTML='<a class="more" style="text-decoration:none;color:inherit;text-align:center;font-weight:600" href="'+u+'" target="_blank" rel="noopener">Abrir Plex e iniciar sesión</a><p>Inicia sesión y pulsa Permitir en la pestaña de Plex. Luego vuelve a esta pestaña.</p>';
 var n=0;(function poll(){pj("https://plex.tv/api/v2/pins/"+p.id+"?code="+p.code+"&"+pq()).then(function(r){
 if(r.authToken){try{localStorage.setItem("ptk",r.authToken)}catch(e){}plexConnect()}else if(++n<90)setTimeout(poll,2000);else $("#msg").textContent="Se agotó el tiempo. Pulsa Mi Plex para intentarlo de nuevo."}).catch(function(){if(++n<90)setTimeout(poll,2000)})})()
 }).catch(function(){$("#msg").textContent="No se pudo iniciar el acceso a Plex."})}
