@@ -182,6 +182,13 @@ if(r.authToken){try{localStorage.setItem("ptk",r.authToken)}catch(e){}plexConnec
 function tryConn(cs,d){return new Promise(function(res,rej){var n=cs.length,f=0;if(!n){rej(new Error("conn"));return}
 cs.forEach(function(c){var ac=new AbortController(),tm=setTimeout(function(){ac.abort()},8000);
 fetch(c.uri+"/identity?X-Plex-Token="+d.accessToken,{headers:{Accept:"application/json"},signal:ac.signal}).then(function(r){clearTimeout(tm);if(!r.ok)throw new Error(r.status);res({uri:c.uri,at:d.accessToken,id:d.clientIdentifier})}).catch(function(e){clearTimeout(tm);PX.errs.push((c.relay?"relay":c.local?"local":"remota")+": "+(e.name==="AbortError"?"tiempo agotado":e.message));if(++f===n)rej(new Error("conn"))})})})}
+function addItems(a){a.forEach(function(it){PX.items.push(it);(it.Guid||[]).forEach(function(g){var m=/^tmdb:\/\/(\d+)/.exec(g.id);if(m)PX.map[(it.type==="show"?"tv":"movie")+m[1]]=it})})}
+function loadPage(s,start){return pj(PX.srv.uri+"/library/sections/"+s.key+"/all?includeGuids=1&X-Plex-Container-Start="+start+"&X-Plex-Container-Size=100&X-Plex-Token="+PX.srv.at).then(function(m){var c=m.MediaContainer,a=c.Metadata||[],tot=c.totalSize||c.size||0;addItems(a);
+if(!PX.ready){PX.ready=true;bars();load(true)}else if(S.plexOn&&!S.mine)renderPlex();
+var more=start+a.length<tot&&a.length>0;
+if(S.plexOn)$("#msg").textContent=more?"Cargando tu biblioteca… "+PX.items.length+" títulos":$("#msg").textContent;
+if(more)return loadPage(s,start+a.length)})}
+function loadSec(secs,i){if(i>=secs.length){if(S.plexOn)renderPlex();return}return loadPage(secs[i],0).then(function(){return loadSec(secs,i+1)})}
 function plexConnect(){$("#grid").innerHTML="";$("#more").hidden=true;PX.errs=[];PX.step="cuenta";var t="";try{t=localStorage.getItem("ptk")||""}catch(e){}
 if(!t){plexLogin();return}
 $("#msg").textContent="Conectando con tu servidor Plex…";
@@ -191,9 +198,9 @@ var d=L.filter(function(x){return x.owned})[0]||L[0];
 var cs=d.connections.filter(function(c){return c.protocol==="https"||/^https:/.test(c.uri)}).sort(function(a,b){return(a.local?0:a.relay?2:1)-(b.local?0:b.relay?2:1)});
 PX.step="conexión";$("#msg").textContent="Buscando tu servidor…";return tryConn(cs,d)}).then(function(srv){PX.srv=srv;PX.step="biblioteca";$("#msg").textContent="Cargando tu biblioteca…";return pj(srv.uri+"/library/sections?X-Plex-Token="+srv.at)}).then(function(d){
 var secs=(d.MediaContainer.Directory||[]).filter(function(x){return x.type==="movie"||x.type==="show"});
-return Promise.all(secs.map(function(s){return pj(PX.srv.uri+"/library/sections/"+s.key+"/all?includeGuids=1&X-Plex-Token="+PX.srv.at).then(function(m){return m.MediaContainer.Metadata||[]})}))}).then(function(a){
-PX.items=[].concat.apply([],a);PX.map={};PX.items.forEach(function(it){(it.Guid||[]).forEach(function(g){var m=/^tmdb:\/\/(\d+)/.exec(g.id);if(m)PX.map[(it.type==="show"?"tv":"movie")+m[1]]=it})});
-PX.ready=true;$("#msg").textContent="";bars();load(true)}).catch(function(e){
+PX.items=[];PX.map={};PX.ready=false;
+return loadSec(secs,0)}).catch(function(e){
+if(PX.ready&&e.message!=="401"){$("#msg").textContent="La biblioteca se cargó solo en parte ("+PX.items.length+" títulos).";return}
 if(e.message==="401"){try{localStorage.removeItem("ptk")}catch(x){}plexLogin();return}
 S.plexOn=false;bars();$("#msg").textContent=e.message==="noserver"?"No encuentro ningún servidor Plex en tu cuenta.":"No se pudo conectar con tu servidor Plex. Paso: "+PX.step+". Detalle: "+(PX.errs.length?PX.errs.join("; "):e.message==="conn"?"sin conexiones seguras disponibles":e.name==="AbortError"?"tiempo agotado":e.message)+"."})}
 function renderPlex(){var tp=S.type==="tv"?"show":"movie",q=S.q.toLowerCase(),a=PX.srv;
