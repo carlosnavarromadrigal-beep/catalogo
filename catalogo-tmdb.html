@@ -32,6 +32,8 @@ input,select{width:100%;background:var(--card);border:1px solid var(--line);bord
 .rt{position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);color:#fff;font-weight:700;font-size:14px;padding:4px 9px;border-radius:999px}
 .rt i{width:9px;height:9px;border-radius:50%}
 .g{background:#22c55e}.y{background:#f59e0b}.r{background:#ef4444}
+.q{background:#e5a00d}
+a.c{display:block;text-decoration:none;color:inherit}
 .c span{color:var(--mute);font-size:13px}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px}
 .n{background:var(--n)}.p{background:var(--p)}.a{background:var(--a)}
@@ -103,7 +105,7 @@ footer{margin-top:30px;color:var(--mute);font-size:12px}
 <dialog id="dlg"></dialog>
 <script>
 var API="https://api.themoviedb.org/3",IMG="https://image.tmdb.org/t/p/";
-var PID={n:8,p:119,a:350},PN={n:"Netflix",p:"Prime Video",a:"Apple TV"};
+var PID={n:8,p:119,a:350},PN={n:"Netflix",p:"Prime Video",a:"Apple TV",q:"Plex"};
 var PU={n:"https://www.netflix.com/search?q=",p:"https://www.primevideo.com/search/?phrase=",a:"https://tv.apple.com/es/search?term="};
 var $=function(s){return document.querySelector(s)};
 var K="",S={type:"movie",plat:"all",genre:"",sort:"popularity.desc",q:"",page:1,total:1,mine:false},PC={},LST=[];
@@ -120,15 +122,16 @@ $("#ksave").onclick=function(){var v=$("#key").value.trim();if(!v)return;K=v;try
 function pills(el,opts,key){el.innerHTML=opts.map(function(o){return'<button class="chip" data-k="'+key+'" data-v="'+o[0]+'" aria-pressed="'+(S[key]===o[0])+'">'+o[1]+'</button>'}).join("")}
 function bars(){pills($("#tipo"),[["movie","Películas"],["tv","Series"]],"type");
 pills($("#plat"),[["all","Todas"],["n","Netflix"],["p","Prime Video"],["a","Apple TV"]],"plat");
-var b=document.createElement("button");b.className="chip";b.dataset.k="mine";b.setAttribute("aria-pressed",S.mine);b.textContent="Mi lista";$("#plat").appendChild(b)}
+var b=document.createElement("button");b.className="chip";b.dataset.k="mine";b.setAttribute("aria-pressed",S.mine);b.textContent="Mi lista";$("#plat").appendChild(b);var b2=document.createElement("button");b2.className="chip";b2.dataset.k="plex";b2.setAttribute("aria-pressed",!!S.plexOn);b2.textContent="Mi Plex";$("#plat").appendChild(b2)}
 function genres(){api("/genre/"+S.type+"/list").then(function(d){$("#genre").innerHTML='<option value="">Todos los géneros</option>'+d.genres.map(function(g){return'<option value="'+g.id+'">'+esc(g.name)+'</option>'}).join("")}).catch(function(){})}
 function dots(pl){return pl.map(function(c){return'<i class="dot '+c+'"></i>'}).join("")+pl.map(function(c){return PN[c]}).join(", ")}
 function rate(r){var v=r.vote_average,c=r.vote_count;if(!(v>0)||(c!=null&&c<10))return"";return'<div class="rt"><i class="'+(v>=7?"g":v>=5.5?"y":"r")+'"></i>'+v.toFixed(1)+'</div>'}
-function card(r,pl,type){var t=r.title||r.name||"",d=(r.release_date||r.first_air_date||"").slice(0,4);
+function card(r,pl,type){if(PX.map[type+r.id]&&pl.indexOf("q")<0)pl=pl.concat("q");var t=r.title||r.name||"",d=(r.release_date||r.first_air_date||"").slice(0,4);
 return'<button class="c" data-id="'+r.id+'" data-t="'+type+'">'+'<div class="w">'+(r.poster_path?'<img loading="lazy" alt="" src="'+IMG+'w342'+r.poster_path+'">':'<div class="ph"></div>')+rate(r)+'</div><b>'+esc(t)+'</b><span>'+d+(pl.length?" · "+dots(pl):"")+'</span></button>'}
 function load(reset){
 if(reset){S.page=1;$("#grid").innerHTML=""}
 $("#msg").textContent="Cargando…";$("#more").hidden=true;
+if(S.plexOn&&PX.ready){renderPlex();return}
 if(S.mine){var h=LST.map(function(i){return card({id:i.id,title:i.t,poster_path:i.p,release_date:i.d,vote_average:i.v,vote_count:i.vc},PC[i.type+i.id]||[],i.type)}).join("");
 $("#grid").innerHTML=h;$("#msg").textContent=LST.length?"":"Tu lista está vacía. Abre un título y pulsa Guardar.";return}
 var req;
@@ -144,7 +147,7 @@ $("#grid").insertAdjacentHTML("beforeend",L.map(function(x){return card(x.r,x.pl
 $("#msg").textContent=$("#grid").children.length?"":"No hay resultados en Netflix, Prime Video ni Apple TV. Prueba otra búsqueda.";
 $("#more").hidden=S.page>=S.total}).catch(function(e){if(e.message!=="clave")$("#msg").textContent="No se pudo cargar el catálogo. Comprueba la conexión e inténtalo de nuevo."})}
 document.addEventListener("click",function(e){var t=e.target.closest("button");if(!t)return;
-if(t.dataset.k){var k=t.dataset.k;if(k==="mine"){S.mine=!S.mine}else{S.mine=false;S[k]=t.dataset.v;if(k==="type"){S.genre="";genres()}}bars();load(true)}
+if(t.dataset.k){var k=t.dataset.k;if(k==="mine"){S.mine=!S.mine;S.plexOn=false}else if(k==="plex"){S.plexOn=!S.plexOn;S.mine=false;if(S.plexOn&&!PX.ready){bars();plexConnect();return}}else{S.mine=false;if(k==="plat")S.plexOn=false;S[k]=t.dataset.v;if(k==="type"){S.genre="";genres()}}bars();load(true)}
 else if(t.classList.contains("c"))openD(t.dataset.t,t.dataset.id)
 else if(t.id==="more"){S.page++;load(false)}
 else if(t.classList.contains("x"))$("#dlg").close()});
@@ -158,10 +161,43 @@ var ol="";try{ol=new Intl.DisplayNames(["es"],{type:"language"}).of(d.original_l
 var meta=[dt,rt,d.vote_average?"★ "+d.vote_average.toFixed(1):"",ol?"Original: "+ol:""].filter(Boolean).join(" · ");
 var saved=LST.some(function(i){return i.id==id&&i.type==type});
 dl.innerHTML='<button class="x" aria-label="Cerrar">×</button><div class="dh">'+(d.poster_path?'<img alt="" src="'+IMG+'w185'+d.poster_path+'">':'<div class="ph"></div>')+'<div><h2>'+esc(t)+'</h2><p>'+esc(meta)+'</p><p>'+esc((d.genres||[]).map(function(g){return g.name}).join(", "))+'</p></div></div><p class="ov">'+esc(d.overview||"Sin sinopsis en castellano.")+'</p><div class="go">'+
-pl.map(function(c){return'<a href="'+PU[c]+encodeURIComponent(t)+'" target="_blank" rel="noopener"><i class="dot '+c+'"></i>Ver en '+PN[c]+'</a>'}).join("")+
+pl.map(function(c){return'<a href="'+PU[c]+encodeURIComponent(t)+'" target="_blank" rel="noopener"><i class="dot '+c+'"></i>Ver en '+PN[c]+'</a>'}).join("")+(PX.map[type+id]?'<a href="'+plexUrl(PX.map[type+id])+'" target="_blank" rel="noopener"><i class="dot q"></i>Ver en Plex</a>':"")+
 '<button id="sv">'+(saved?"Quitar de mi lista":"Guardar en mi lista")+'</button></div>';
 $("#sv").onclick=function(){if(saved){LST=LST.filter(function(i){return!(i.id==id&&i.type==type)})}else{LST.push({id:d.id,type:type,t:t,p:d.poster_path,d:d.release_date||d.first_air_date,v:d.vote_average,vc:d.vote_count})}
 try{localStorage.setItem("lst",JSON.stringify(LST))}catch(e){}openD(type,id);if(S.mine)load(true)}}).catch(function(){dl.innerHTML='<button class="x">×</button><p class="msg">No se pudo cargar este título.</p>'})}
+var CID="";try{CID=localStorage.getItem("cid")||"";if(!CID){CID=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("cid",CID)}}catch(e){CID=CID||"cat"+Date.now()}
+var PX={ready:false,items:[],map:{},srv:null};
+var JH={headers:{Accept:"application/json"}};
+function pq(t){return"X-Plex-Client-Identifier="+encodeURIComponent(CID)+"&X-Plex-Product=Mi%20catalogo"+(t?"&X-Plex-Token="+encodeURIComponent(t):"")}
+function pj(u,o){return fetch(u,o||JH).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
+function plexUrl(i){return"https://app.plex.tv/desktop/#!/server/"+PX.srv.id+"/details?key="+encodeURIComponent("/library/metadata/"+i.ratingKey)}
+function plexLogin(){var w=window.open("","_blank");$("#msg").textContent="Inicia sesión en Plex en la pestaña que se abre y vuelve aquí.";
+pj("https://plex.tv/api/v2/pins?strong=true&"+pq(),{method:"POST",headers:{Accept:"application/json"}}).then(function(p){
+var u="https://app.plex.tv/auth#?clientID="+encodeURIComponent(CID)+"&code="+p.code+"&context%5Bdevice%5D%5Bproduct%5D=Mi%20catalogo";
+if(w)w.location.href=u;else $("#msg").innerHTML='<a href="'+u+'" target="_blank" rel="noopener">Toca aquí para iniciar sesión en Plex</a>';
+var n=0;(function poll(){pj("https://plex.tv/api/v2/pins/"+p.id+"?code="+p.code+"&"+pq()).then(function(r){
+if(r.authToken){try{localStorage.setItem("ptk",r.authToken)}catch(e){}plexConnect()}else if(++n<90)setTimeout(poll,2000);else $("#msg").textContent="Se agotó el tiempo. Pulsa Mi Plex para intentarlo de nuevo."}).catch(function(){if(++n<90)setTimeout(poll,2000)})})()
+}).catch(function(){$("#msg").textContent="No se pudo iniciar el acceso a Plex."})}
+function tryConn(cs,i,d){if(i>=cs.length)return Promise.reject(new Error("conn"));var c=new AbortController(),tm=setTimeout(function(){c.abort()},7000);
+return fetch(cs[i].uri+"/identity?X-Plex-Token="+d.accessToken,{headers:{Accept:"application/json"},signal:c.signal}).then(function(r){clearTimeout(tm);if(!r.ok)throw new Error(r.status);return{uri:cs[i].uri,at:d.accessToken,id:d.clientIdentifier}}).catch(function(){clearTimeout(tm);return tryConn(cs,i+1,d)})}
+function plexConnect(){var t="";try{t=localStorage.getItem("ptk")||""}catch(e){}
+if(!t){plexLogin();return}
+$("#msg").textContent="Conectando con tu servidor Plex…";
+pj("https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&"+pq(t)).then(function(R){
+var L=R.filter(function(d){return(d.provides||"").indexOf("server")>-1});if(!L.length)throw new Error("noserver");
+var d=L.filter(function(x){return x.owned})[0]||L[0];
+var cs=d.connections.filter(function(c){return c.protocol==="https"||/^https:/.test(c.uri)}).sort(function(a,b){return(a.local?0:a.relay?2:1)-(b.local?0:b.relay?2:1)});
+return tryConn(cs,0,d)}).then(function(srv){PX.srv=srv;return pj(srv.uri+"/library/sections?X-Plex-Token="+srv.at)}).then(function(d){
+var secs=(d.MediaContainer.Directory||[]).filter(function(x){return x.type==="movie"||x.type==="show"});
+return Promise.all(secs.map(function(s){return pj(PX.srv.uri+"/library/sections/"+s.key+"/all?includeGuids=1&X-Plex-Token="+PX.srv.at).then(function(m){return m.MediaContainer.Metadata||[]})}))}).then(function(a){
+PX.items=[].concat.apply([],a);PX.map={};PX.items.forEach(function(it){(it.Guid||[]).forEach(function(g){var m=/^tmdb:\/\/(\d+)/.exec(g.id);if(m)PX.map[(it.type==="show"?"tv":"movie")+m[1]]=it})});
+PX.ready=true;$("#msg").textContent="";bars();load(true)}).catch(function(e){
+if(e.message==="401"){try{localStorage.removeItem("ptk")}catch(x){}plexLogin();return}
+S.plexOn=false;bars();$("#msg").textContent=e.message==="noserver"?"No encuentro ningún servidor Plex en tu cuenta.":"No se pudo conectar con tu servidor Plex. Comprueba que está encendido y que las conexiones seguras están activadas."})}
+function renderPlex(){var tp=S.type==="tv"?"show":"movie",q=S.q.toLowerCase(),a=PX.srv;
+var L=PX.items.filter(function(i){return i.type===tp&&(!q||i.title.toLowerCase().indexOf(q)>-1)}).sort(function(x,y){return x.title.localeCompare(y.title,"es")});
+$("#grid").innerHTML=L.map(function(i){return'<a class="c" href="'+plexUrl(i)+'" target="_blank" rel="noopener"><div class="w">'+(i.thumb?'<img loading="lazy" alt="" src="'+a.uri+i.thumb+'?X-Plex-Token='+a.at+'">':'<div class="ph"></div>')+rate({vote_average:i.audienceRating||i.rating})+'</div><b>'+esc(i.title)+'</b><span>'+(i.year||"")+' · <i class="dot q"></i>Plex</span></a>'}).join("");
+$("#msg").textContent=L.length?"":"No hay títulos en tu biblioteca con ese filtro.";$("#more").hidden=true}
 function setTV(on){document.documentElement.classList.toggle("tv",on);$("#tvb").textContent=on?"Salir de modo TV":"Modo TV";try{localStorage.setItem("tv",on?"1":"0")}catch(e){}}
 $("#tvb").onclick=function(){setTV(!document.documentElement.classList.contains("tv"))};
 (function(){var s=null;try{s=localStorage.getItem("tv")}catch(e){}setTV(s===null?/\bAFT/.test(navigator.userAgent):s==="1")})();
