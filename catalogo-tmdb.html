@@ -34,6 +34,7 @@ input,select{width:100%;background:var(--card);border:1px solid var(--line);bord
 .g{background:#22c55e}.y{background:#f59e0b}.r{background:#ef4444}
 .q{background:#e5a00d}
 a.c{display:block;text-decoration:none;color:inherit}
+.more[hidden]{display:none}
 .c span{color:var(--mute);font-size:13px}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px}
 .n{background:var(--n)}.p{background:var(--p)}.a{background:var(--a)}
@@ -169,7 +170,7 @@ var CID="";try{CID=localStorage.getItem("cid")||"";if(!CID){CID=Math.random().to
 var PX={ready:false,items:[],map:{},srv:null,errs:[],step:""};
 var JH={headers:{Accept:"application/json"}};
 function pq(t){return"X-Plex-Client-Identifier="+encodeURIComponent(CID)+"&X-Plex-Product=Mi%20catalogo"+(t?"&X-Plex-Token="+encodeURIComponent(t):"")}
-function pj(u,o){return fetch(u,o||JH).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
+function pj(u,o){var ac=new AbortController(),tm=setTimeout(function(){ac.abort()},40000),op=Object.assign({},o||JH,{signal:ac.signal});return fetch(u,op).then(function(r){clearTimeout(tm);if(!r.ok)throw new Error(r.status);return r.json()}).catch(function(e){clearTimeout(tm);throw e})}
 function plexUrl(i){return"https://app.plex.tv/desktop/#!/server/"+PX.srv.id+"/details?key="+encodeURIComponent("/library/metadata/"+i.ratingKey)}
 function plexLogin(){$("#msg").textContent="Preparando el acceso a Plex…";
 pj("https://plex.tv/api/v2/pins?strong=true&"+pq(),{method:"POST",headers:{Accept:"application/json"}}).then(function(p){
@@ -178,8 +179,9 @@ $("#msg").innerHTML='<a class="more" style="text-decoration:none;color:inherit;t
 var n=0;(function poll(){pj("https://plex.tv/api/v2/pins/"+p.id+"?code="+p.code+"&"+pq()).then(function(r){
 if(r.authToken){try{localStorage.setItem("ptk",r.authToken)}catch(e){}plexConnect()}else if(++n<90)setTimeout(poll,2000);else $("#msg").textContent="Se agotó el tiempo. Pulsa Mi Plex para intentarlo de nuevo."}).catch(function(){if(++n<90)setTimeout(poll,2000)})})()
 }).catch(function(){$("#msg").textContent="No se pudo iniciar el acceso a Plex."})}
-function tryConn(cs,i,d){if(i>=cs.length)return Promise.reject(new Error("conn"));var c=new AbortController(),tm=setTimeout(function(){c.abort()},7000);
-return fetch(cs[i].uri+"/identity?X-Plex-Token="+d.accessToken,{headers:{Accept:"application/json"},signal:c.signal}).then(function(r){clearTimeout(tm);if(!r.ok)throw new Error(r.status);return{uri:cs[i].uri,at:d.accessToken,id:d.clientIdentifier}}).catch(function(e){clearTimeout(tm);PX.errs.push((cs[i].relay?"relay":cs[i].local?"local":"remota")+": "+(e.name==="AbortError"?"tiempo agotado":e.message));return tryConn(cs,i+1,d)})}
+function tryConn(cs,d){return new Promise(function(res,rej){var n=cs.length,f=0;if(!n){rej(new Error("conn"));return}
+cs.forEach(function(c){var ac=new AbortController(),tm=setTimeout(function(){ac.abort()},8000);
+fetch(c.uri+"/identity?X-Plex-Token="+d.accessToken,{headers:{Accept:"application/json"},signal:ac.signal}).then(function(r){clearTimeout(tm);if(!r.ok)throw new Error(r.status);res({uri:c.uri,at:d.accessToken,id:d.clientIdentifier})}).catch(function(e){clearTimeout(tm);PX.errs.push((c.relay?"relay":c.local?"local":"remota")+": "+(e.name==="AbortError"?"tiempo agotado":e.message));if(++f===n)rej(new Error("conn"))})})})}
 function plexConnect(){$("#grid").innerHTML="";$("#more").hidden=true;PX.errs=[];PX.step="cuenta";var t="";try{t=localStorage.getItem("ptk")||""}catch(e){}
 if(!t){plexLogin();return}
 $("#msg").textContent="Conectando con tu servidor Plex…";
@@ -187,13 +189,13 @@ pj("https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&"+pq(t)).then
 var L=R.filter(function(d){return(d.provides||"").indexOf("server")>-1});if(!L.length)throw new Error("noserver");
 var d=L.filter(function(x){return x.owned})[0]||L[0];
 var cs=d.connections.filter(function(c){return c.protocol==="https"||/^https:/.test(c.uri)}).sort(function(a,b){return(a.local?0:a.relay?2:1)-(b.local?0:b.relay?2:1)});
-PX.step="conexión";return tryConn(cs,0,d)}).then(function(srv){PX.srv=srv;PX.step="biblioteca";return pj(srv.uri+"/library/sections?X-Plex-Token="+srv.at)}).then(function(d){
+PX.step="conexión";$("#msg").textContent="Buscando tu servidor…";return tryConn(cs,d)}).then(function(srv){PX.srv=srv;PX.step="biblioteca";$("#msg").textContent="Cargando tu biblioteca…";return pj(srv.uri+"/library/sections?X-Plex-Token="+srv.at)}).then(function(d){
 var secs=(d.MediaContainer.Directory||[]).filter(function(x){return x.type==="movie"||x.type==="show"});
 return Promise.all(secs.map(function(s){return pj(PX.srv.uri+"/library/sections/"+s.key+"/all?includeGuids=1&X-Plex-Token="+PX.srv.at).then(function(m){return m.MediaContainer.Metadata||[]})}))}).then(function(a){
 PX.items=[].concat.apply([],a);PX.map={};PX.items.forEach(function(it){(it.Guid||[]).forEach(function(g){var m=/^tmdb:\/\/(\d+)/.exec(g.id);if(m)PX.map[(it.type==="show"?"tv":"movie")+m[1]]=it})});
 PX.ready=true;$("#msg").textContent="";bars();load(true)}).catch(function(e){
 if(e.message==="401"){try{localStorage.removeItem("ptk")}catch(x){}plexLogin();return}
-S.plexOn=false;bars();$("#msg").textContent=e.message==="noserver"?"No encuentro ningún servidor Plex en tu cuenta.":"No se pudo conectar con tu servidor Plex. Paso: "+PX.step+". Detalle: "+(PX.errs.length?PX.errs.join("; "):e.message==="conn"?"sin conexiones seguras disponibles":e.message)+"."})}
+S.plexOn=false;bars();$("#msg").textContent=e.message==="noserver"?"No encuentro ningún servidor Plex en tu cuenta.":"No se pudo conectar con tu servidor Plex. Paso: "+PX.step+". Detalle: "+(PX.errs.length?PX.errs.join("; "):e.message==="conn"?"sin conexiones seguras disponibles":e.name==="AbortError"?"tiempo agotado":e.message)+"."})}
 function renderPlex(){var tp=S.type==="tv"?"show":"movie",q=S.q.toLowerCase(),a=PX.srv;
 var L=PX.items.filter(function(i){return i.type===tp&&(!q||i.title.toLowerCase().indexOf(q)>-1)}).sort(function(x,y){return x.title.localeCompare(y.title,"es")});
 $("#grid").innerHTML=L.map(function(i){return'<a class="c" href="'+plexUrl(i)+'" target="_blank" rel="noopener"><div class="w">'+(i.thumb?'<img loading="lazy" alt="" src="'+a.uri+i.thumb+'?X-Plex-Token='+a.at+'">':'<div class="ph"></div>')+rate({vote_average:i.audienceRating||i.rating})+'</div><b>'+esc(i.title)+'</b><span>'+(i.year||"")+' · <i class="dot q"></i>Plex</span></a>'}).join("");
