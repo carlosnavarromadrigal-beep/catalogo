@@ -35,6 +35,10 @@ input,select{width:100%;background:var(--card);border:1px solid var(--line);bord
 .q{background:#e5a00d}
 a.c{display:block;text-decoration:none;color:inherit}
 .more[hidden]{display:none}
+.stt{position:absolute;bottom:8px;left:8px;background:#d62f2c;color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+.stt.sn{background:#16a34a}
+.sb[aria-pressed=true]{background:var(--acc)!important;color:var(--accfg)!important;border-color:var(--acc)!important}
+#imdb{margin-top:4px}#imdb a{color:var(--mute)}
 .c span{color:var(--mute);font-size:13px}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px}
 .n{background:var(--n)}.p{background:var(--p)}.a{background:var(--a)}
@@ -79,7 +83,7 @@ footer{margin-top:30px;color:var(--mute);font-size:12px}
 <button class="tvb" id="tvb">Modo TV</button>
 </div></header>
 <main>
-<h1>Mi catálogo</h1>
+<h1>Mi panel</h1>
 <section id="gate" hidden>
 <p>Para cargar el catálogo hace falta una clave gratuita de TMDB: crea una cuenta en themoviedb.org, entra en Ajustes › API y copia la "Clave de API" (la corta, v3).</p>
 <input id="key" type="text" placeholder="Pega aquí tu clave de API" autocomplete="off">
@@ -100,6 +104,7 @@ footer{margin-top:30px;color:var(--mute);font-size:12px}
 <summary>Audio en castellano y sin subtítulos</summary>
 <p>Cada plataforma controla el audio y los subtítulos dentro de su propio reproductor, y ninguna permite fijarlos desde un enlace externo. Para que casi siempre salga como quieres: elige en los ajustes de cada app el idioma de audio Español (España) y desactiva los subtítulos. Netflix y Apple TV recuerdan la elección que haces al reproducir. TMDB no indica si un título trae doblaje en castellano, así que en algún caso habrá que cambiar la pista a mano.</p>
 </details>
+<details><summary>Nota de IMDb (opcional)</summary><p>Con una clave gratuita de omdbapi.com verás la nota de IMDb en la ficha de cada título.</p><input id="ok" type="text" placeholder="Clave de OMDb" autocomplete="off"><button class="btn" id="oks">Guardar</button></details>
 <footer>Datos de TMDB. Disponibilidad en España cortesía de JustWatch. Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.</footer>
 </section>
 </main>
@@ -123,18 +128,21 @@ $("#ksave").onclick=function(){var v=$("#key").value.trim();if(!v)return;K=v;try
 function pills(el,opts,key){el.innerHTML=opts.map(function(o){return'<button class="chip" data-k="'+key+'" data-v="'+o[0]+'" aria-pressed="'+(S[key]===o[0])+'">'+o[1]+'</button>'}).join("")}
 function bars(){pills($("#tipo"),[["movie","Películas"],["tv","Series"]],"type");
 pills($("#plat"),[["all","Todas"],["n","Netflix"],["p","Prime Video"],["a","Apple TV"]],"plat");
-var b=document.createElement("button");b.className="chip";b.dataset.k="mine";b.setAttribute("aria-pressed",S.mine);b.textContent="Mi lista";$("#plat").appendChild(b);var b2=document.createElement("button");b2.className="chip";b2.dataset.k="plex";b2.setAttribute("aria-pressed",!!S.plexOn);b2.textContent="Mi Plex";$("#plat").appendChild(b2)}
+[["want","Quiero ver"],["seen","Vistos"]].forEach(function(o){var b=document.createElement("button");b.className="chip";b.dataset.k="mine";b.dataset.v=o[0];b.setAttribute("aria-pressed",S.mine===o[0]);b.textContent=o[1];$("#plat").appendChild(b)});var b2=document.createElement("button");b2.className="chip";b2.dataset.k="plex";b2.setAttribute("aria-pressed",!!S.plexOn);b2.textContent="Mi Plex";$("#plat").appendChild(b2)}
 function genres(){api("/genre/"+S.type+"/list").then(function(d){$("#genre").innerHTML='<option value="">Todos los géneros</option>'+d.genres.map(function(g){return'<option value="'+g.id+'">'+esc(g.name)+'</option>'}).join("")}).catch(function(){})}
 function dots(pl){return pl.map(function(c){return'<i class="dot '+c+'"></i>'}).join("")+pl.map(function(c){return PN[c]}).join(", ")}
+function stb(type,id){var x=LST.filter(function(i){return i.id==id&&i.type==type})[0];if(!x)return"";var sn=(x.s||"want")==="seen";return'<div class="stt'+(sn?' sn':'')+'">'+(sn?"✓ Visto":"★ Quiero ver")+'</div>'}
+function badge(type,id){var c=document.querySelector('.c[data-id="'+id+'"][data-t="'+type+'"] .w');if(!c)return;var o=c.querySelector(".stt");if(o)o.remove();c.insertAdjacentHTML("beforeend",stb(type,id))}
 function rate(r){var v=r.vote_average,c=r.vote_count;if(!(v>0)||(c!=null&&c<10))return"";return'<div class="rt"><i class="'+(v>=7?"g":v>=5.5?"y":"r")+'"></i>'+v.toFixed(1)+'</div>'}
 function card(r,pl,type){if(PX.map[type+r.id]&&pl.indexOf("q")<0)pl=pl.concat("q");var t=r.title||r.name||"",d=(r.release_date||r.first_air_date||"").slice(0,4);
-return'<button class="c" data-id="'+r.id+'" data-t="'+type+'">'+'<div class="w">'+(r.poster_path?'<img loading="lazy" alt="" src="'+IMG+'w342'+r.poster_path+'">':'<div class="ph"></div>')+rate(r)+'</div><b>'+esc(t)+'</b><span>'+d+(pl.length?" · "+dots(pl):"")+'</span></button>'}
+return'<button class="c" data-id="'+r.id+'" data-t="'+type+'">'+'<div class="w">'+(r.poster_path?'<img loading="lazy" alt="" src="'+IMG+'w342'+r.poster_path+'">':'<div class="ph"></div>')+rate(r)+stb(type,r.id)+'</div><b>'+esc(t)+'</b><span>'+d+(pl.length?" · "+dots(pl):"")+'</span></button>'}
 function load(reset){
 if(reset){S.page=1;$("#grid").innerHTML=""}
 $("#msg").textContent="Cargando…";$("#more").hidden=true;
 if(S.plexOn&&PX.ready){renderPlex();return}
-if(S.mine){var h=LST.map(function(i){return card({id:i.id,title:i.t,poster_path:i.p,release_date:i.d,vote_average:i.v,vote_count:i.vc},PC[i.type+i.id]||[],i.type)}).join("");
-$("#grid").innerHTML=h;$("#msg").textContent=LST.length?"":"Tu lista está vacía. Abre un título y pulsa Guardar.";return}
+if(S.mine){var L=LST.filter(function(i){return(i.s||"want")===S.mine});$("#grid").innerHTML="";
+$("#msg").textContent=L.length?"Cargando…":(S.mine==="seen"?"Aún no has marcado nada como visto. Abre un título y pulsa Ya la he visto.":"No tienes nada pendiente. Abre un título y pulsa Quiero verla.");
+Promise.all(L.map(function(i){return provs(i.type,i.id)})).then(function(){if(!S.mine)return;$("#grid").innerHTML=L.map(function(i){return card({id:i.id,title:i.t,poster_path:i.p,release_date:i.d,vote_average:i.v,vote_count:i.vc},PC[i.type+i.id]||[],i.type)}).join("");if(L.length)$("#msg").textContent=""});return}
 var req;
 if(S.q){req=api("/search/"+S.type,{query:S.q,page:S.page})}
 else{var ids=S.plat==="all"?[8,119,350].join("|"):PID[S.plat];
@@ -148,7 +156,7 @@ $("#grid").insertAdjacentHTML("beforeend",L.map(function(x){return card(x.r,x.pl
 $("#msg").textContent=$("#grid").children.length?"":"No hay resultados en Netflix, Prime Video ni Apple TV. Prueba otra búsqueda.";
 $("#more").hidden=S.page>=S.total}).catch(function(e){if(e.message!=="clave")$("#msg").textContent="No se pudo cargar el catálogo. Comprueba la conexión e inténtalo de nuevo."})}
 document.addEventListener("click",function(e){var t=e.target.closest("button");if(!t)return;
-if(t.dataset.k){var k=t.dataset.k;if(k==="mine"){S.mine=!S.mine;S.plexOn=false}else if(k==="plex"){S.plexOn=!S.plexOn;S.mine=false;if(S.plexOn&&!PX.ready){bars();plexConnect();return}}else{S.mine=false;if(k==="plat")S.plexOn=false;S[k]=t.dataset.v;if(k==="type"){S.genre="";genres()}}bars();load(true)}
+if(t.dataset.k){var k=t.dataset.k;if(k==="mine"){S.mine=S.mine===t.dataset.v?"":t.dataset.v;S.plexOn=false}else if(k==="plex"){S.plexOn=!S.plexOn;S.mine=false;if(S.plexOn&&!PX.ready){bars();plexConnect();return}}else{S.mine=false;if(k==="plat")S.plexOn=false;S[k]=t.dataset.v;if(k==="type"){S.genre="";genres()}}bars();load(true)}
 else if(t.classList.contains("c"))openD(t.dataset.t,t.dataset.id)
 else if(t.id==="more"){S.page++;load(false)}
 else if(t.classList.contains("x"))$("#dlg").close()});
@@ -156,16 +164,23 @@ $("#genre").onchange=function(e){S.genre=e.target.value;load(true)};
 $("#sort").onchange=function(e){S.sort=e.target.value;load(true)};
 var tm;$("#q").oninput=function(e){clearTimeout(tm);tm=setTimeout(function(){S.q=e.target.value.trim();S.mine=false;bars();load(true)},350)};
 function openD(type,id){var dl=$("#dlg");dl.innerHTML='<p class="msg">Cargando…</p>';dl.showModal();
-Promise.all([api("/"+type+"/"+id),provs(type,id)]).then(function(a){var d=a[0],pl=a[1],t=d.title||d.name,dt=(d.release_date||d.first_air_date||"").slice(0,4);
+Promise.all([api("/"+type+"/"+id,{append_to_response:"external_ids"}),provs(type,id),api("/"+type+"/"+id+"/videos").catch(function(){return{results:[]}})]).then(function(a){var d=a[0],pl=a[1],vd=a[2],t=d.title||d.name,dt=(d.release_date||d.first_air_date||"").slice(0,4);
 var rt=d.runtime?d.runtime+" min":(d.number_of_seasons?d.number_of_seasons+(d.number_of_seasons>1?" temporadas":" temporada"):"");
 var ol="";try{ol=new Intl.DisplayNames(["es"],{type:"language"}).of(d.original_language)}catch(e){}
-var meta=[dt,rt,d.vote_average?"★ "+d.vote_average.toFixed(1):"",ol?"Original: "+ol:""].filter(Boolean).join(" · ");
-var saved=LST.some(function(i){return i.id==id&&i.type==type});
-dl.innerHTML='<button class="x" aria-label="Cerrar">×</button><div class="dh">'+(d.poster_path?'<img alt="" src="'+IMG+'w185'+d.poster_path+'">':'<div class="ph"></div>')+'<div><h2>'+esc(t)+'</h2><p>'+esc(meta)+'</p><p>'+esc((d.genres||[]).map(function(g){return g.name}).join(", "))+'</p></div></div><p class="ov">'+esc(d.overview||"Sin sinopsis en castellano.")+'</p><div class="go">'+
+var meta=[dt,rt,d.vote_average?"TMDB ★ "+d.vote_average.toFixed(1):"",ol?"Original: "+ol:""].filter(Boolean).join(" · ");
+var im=d.imdb_id||(d.external_ids&&d.external_ids.imdb_id)||"";
+var tr=(vd.results||[]).filter(function(v){return v.site==="YouTube"&&(v.type==="Trailer"||v.type==="Teaser")}).sort(function(x,y){return(y.type==="Trailer")-(x.type==="Trailer")})[0];
+var cur=LST.filter(function(i){return i.id==id&&i.type==type})[0],stt=cur?(cur.s||"want"):"";
+dl.innerHTML='<button class="x" aria-label="Cerrar">×</button><div class="dh">'+(d.poster_path?'<img alt="" src="'+IMG+'w185'+d.poster_path+'">':'<div class="ph"></div>')+'<div><h2>'+esc(t)+'</h2><p>'+esc(meta)+'</p><p id="imdb">'+(im?'<a href="https://www.imdb.com/title/'+im+'/" target="_blank" rel="noopener">Ver en IMDb</a>':"")+'</p><p>'+esc((d.genres||[]).map(function(g){return g.name}).join(", "))+'</p></div></div><p class="ov">'+esc(d.overview||"Sin sinopsis en castellano.")+'</p><div id="tr"></div><div class="go">'+(tr?'<button id="trb">▶ Tráiler en castellano</button>':'<a href="https://www.youtube.com/results?search_query='+encodeURIComponent(t+" tráiler castellano")+'" target="_blank" rel="noopener">Buscar tráiler en YouTube</a>')+
 pl.map(function(c){return'<a href="'+PU[c]+encodeURIComponent(t)+'" target="_blank" rel="noopener"><i class="dot '+c+'"></i>Ver en '+PN[c]+'</a>'}).join("")+(PX.map[type+id]?'<a href="'+plexUrl(PX.map[type+id])+'" target="_blank" rel="noopener"><i class="dot q"></i>Ver en Plex</a>':"")+
-'<button id="sv">'+(saved?"Quitar de mi lista":"Guardar en mi lista")+'</button></div>';
-$("#sv").onclick=function(){if(saved){LST=LST.filter(function(i){return!(i.id==id&&i.type==type)})}else{LST.push({id:d.id,type:type,t:t,p:d.poster_path,d:d.release_date||d.first_air_date,v:d.vote_average,vc:d.vote_count})}
-try{localStorage.setItem("lst",JSON.stringify(LST))}catch(e){}openD(type,id);if(S.mine)load(true)}}).catch(function(){dl.innerHTML='<button class="x">×</button><p class="msg">No se pudo cargar este título.</p>'})}
+'</div><div class="go" style="margin-top:12px"><button id="bw" class="sb" aria-pressed="'+(stt==="want")+'">★ Quiero verla</button><button id="bs" class="sb" aria-pressed="'+(stt==="seen")+'">✓ Ya la he visto</button></div>';
+function setS(v){var x=LST.filter(function(i){return i.id==id&&i.type==type})[0];if(x&&(x.s||"want")===v){LST=LST.filter(function(i){return i!==x})}else if(x){x.s=v}else{LST.push({id:d.id,type:type,t:t,p:d.poster_path,d:d.release_date||d.first_air_date,v:d.vote_average,vc:d.vote_count,s:v})}
+try{localStorage.setItem("lst",JSON.stringify(LST))}catch(e){}openD(type,id);if(S.mine)load(true);else badge(type,id)}
+$("#bw").onclick=function(){setS("want")};$("#bs").onclick=function(){setS("seen")};
+if(tr)$("#trb").onclick=function(){$("#tr").innerHTML='<iframe src="https://www.youtube-nocookie.com/embed/'+encodeURIComponent(tr.key)+'?rel=0" allow="fullscreen; picture-in-picture" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;margin-bottom:12px"></iframe>';this.hidden=true};
+var ok="";try{ok=localStorage.getItem("omdb")||""}catch(e){}
+if(ok&&im)fetch("https://www.omdbapi.com/?apikey="+encodeURIComponent(ok)+"&i="+im).then(function(r){return r.json()}).then(function(o){if(o&&o.imdbRating&&o.imdbRating!=="N/A")$("#imdb").insertAdjacentHTML("afterbegin","IMDb ★ "+esc(o.imdbRating)+" · ")}).catch(function(){})
+}).catch(function(){dl.innerHTML='<button class="x">×</button><p class="msg">No se pudo cargar este título.</p>'})}
 var CID="";try{CID=localStorage.getItem("cid")||"";if(!CID){CID=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("cid",CID)}}catch(e){CID=CID||"cat"+Date.now()}
 var PX={ready:false,items:[],map:{},srv:null,errs:[],step:""};
 var JH={headers:{Accept:"application/json"}};
@@ -207,6 +222,7 @@ function renderPlex(){var tp=S.type==="tv"?"show":"movie",q=S.q.toLowerCase(),a=
 var L=PX.items.filter(function(i){return i.type===tp&&(!q||i.title.toLowerCase().indexOf(q)>-1)}).sort(function(x,y){return x.title.localeCompare(y.title,"es")});
 $("#grid").innerHTML=L.map(function(i){return'<a class="c" href="'+plexUrl(i)+'" target="_blank" rel="noopener"><div class="w">'+(i.thumb?'<img loading="lazy" alt="" src="'+a.uri+i.thumb+'?X-Plex-Token='+a.at+'">':'<div class="ph"></div>')+rate({vote_average:i.audienceRating||i.rating})+'</div><b>'+esc(i.title)+'</b><span>'+(i.year||"")+' · <i class="dot q"></i>Plex</span></a>'}).join("");
 $("#msg").textContent=L.length?"":"No hay títulos en tu biblioteca con ese filtro.";$("#more").hidden=true}
+$("#oks").onclick=function(){try{localStorage.setItem("omdb",$("#ok").value.trim())}catch(e){}$("#oks").textContent="Guardada"};
 function setTV(on){document.documentElement.classList.toggle("tv",on);$("#tvb").textContent=on?"Salir de modo TV":"Modo TV";try{localStorage.setItem("tv",on?"1":"0")}catch(e){}}
 $("#tvb").onclick=function(){setTV(!document.documentElement.classList.contains("tv"))};
 (function(){var s=null;try{s=localStorage.getItem("tv")}catch(e){}setTV(s===null?/\bAFT/.test(navigator.userAgent):s==="1")})();
